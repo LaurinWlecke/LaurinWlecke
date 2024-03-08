@@ -1,0 +1,85 @@
+import sqlite3
+import random
+
+class WitzGenerator:
+    def __init__(self, db_name="witze.db"):
+        self.db_name = db_name
+        self.verbindung = sqlite3.connect(db_name)
+        self.cursor = self.verbindung.cursor()
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS Witze (
+                                id INTEGER PRIMARY KEY,
+                                text TEXT,
+                                bewertung INTEGER,
+                                anzahl_bewertungen INTEGER)''')
+        self.verbindung.commit()
+    
+    def neuen_witz_hinzufügen(self, witz):
+        self.cursor.execute("INSERT INTO Witze (text, bewertung, anzahl_bewertungen) VALUES (?, ?, ?)", (witz, 0, 0))
+        self.verbindung.commit()
+    
+    def witz_bewerten(self, id, bewertung):
+        self.cursor.execute("SELECT bewertung, anzahl_bewertungen FROM Witze WHERE id = ?", (id,))
+        bewertung_alte, anzahl_bewertungen = self.cursor.fetchone()
+        neue_bewertung = (bewertung_alte * anzahl_bewertungen + bewertung) / (anzahl_bewertungen + 1)
+        self.cursor.execute("UPDATE Witze SET bewertung = ?, anzahl_bewertungen = ? WHERE id = ?", (neue_bewertung, anzahl_bewertungen + 1, id))
+        self.verbindung.commit()
+    
+    def zufälligen_witz_zeigen(self):
+        self.cursor.execute("SELECT * FROM Witze")
+        witze = self.cursor.fetchall()
+        if witze:
+            witz = random.choice(witze)
+            print(witz[1])
+        else:
+            print("Es gibt noch keine Witze.")
+    
+    def witze_anzeigen(self):
+        self.cursor.execute("SELECT * FROM Witze")
+        witze = self.cursor.fetchall()
+        if witze:
+            for witz in witze:
+                print(f"{witz[0]}. {witz[1]} (Bewertung: {witz[2]:.2f} von {witz[3]} Bewertungen)")
+        else:
+            print("Es gibt noch keine Witze.")
+    
+    def __del__(self):
+        self.verbindung.close()
+
+def main():
+    generator = WitzGenerator()
+    
+    while True:
+        print("\nWitz Generator Menü:")
+        print("1. Neuen Witz hinzufügen")
+        print("2. Witz bewerten")
+        print("3. Zufälligen Witz anzeigen")
+        print("4. Alle Witze anzeigen")
+        print("5. Beenden")
+        
+        auswahl = input("Bitte wählen Sie eine Option: ")
+        
+        if auswahl == "1":
+            neuer_witz = input("Geben Sie den neuen Witz ein: ")
+            generator.neuen_witz_hinzufügen(neuer_witz)
+            print("Neuer Witz hinzugefügt!")
+        elif auswahl == "2":
+            generator.witze_anzeigen()
+            id = int(input("Geben Sie die ID des Witzes ein, den Sie bewerten möchten: "))
+            bewertung = float(input("Geben Sie die Bewertung (1 für positiv, -1 für negativ) ein: "))
+            generator.witz_bewerten(id, bewertung)
+            print("Bewertung erfolgreich!")
+        elif auswahl == "3":
+            print("Hier ist ein zufälliger Witz:")
+            generator.zufälligen_witz_zeigen()
+        elif auswahl == "4":
+            print("Alle Witze:")
+            generator.witze_anzeigen()
+        elif auswahl == "5":
+            print("Auf Wiedersehen!")
+            break
+        else:
+            print("Ungültige Eingabe. Bitte wählen Sie eine der angegebenen Optionen aus.")
+
+if __name__ == "__main__":
+    main()
+
